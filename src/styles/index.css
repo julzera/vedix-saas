@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Suas variáveis abaixo continuam iguais */
+@layer base {
+  :root {
+    --bg-app: #FFF5F9;
+    --surface: #FFFFFF;
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --border-color: #F3E8F0;
+  }
+}

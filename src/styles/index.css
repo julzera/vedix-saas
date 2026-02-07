@@ -3,23 +3,28 @@
 @layer base {
   :root {
     /* Cores Light (Padrão) */
-    --bg-app: #FFF5F9;
+    --bg-app: #F1F5F9; /* Slate 100 para fundo claro mais bonito */
     --surface: #FFFFFF;
-    --text-primary: #1F2937;
-    --text-secondary: #6B7280;
-    --border-color: #F3E8F0;
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+    --border-color: #E2E8F0;
+    
+    /* Cor das bolinhas do grid no Light Mode */
+    --dot-color: #CBD5E1; 
   }
 
   /* Quando a classe 'dark' está presente no HTML */
   .dark {
-    --bg-app: #0F172A;      /* Azul Noturno Profundo */
-    --surface: #1E293B;     /* Azul/Cinza Slate */
-    --text-primary: #F8FAFC; /* Branco Gelo */
-    --text-secondary: #94A3B8; /* Cinza Claro */
-    --border-color: #334155;   /* Borda Escura */
+    --bg-app: #0F172A;      
+    --surface: #1E293B;     
+    --text-primary: #F8FAFC; 
+    --text-secondary: #94A3B8; 
+    --border-color: #334155;
+    
+    /* Cor das bolinhas do grid no Dark Mode */
+    --dot-color: rgba(148, 163, 184, 0.2);
   }
 
-  /* Aplicação global suave */
   body {
     background-color: var(--bg-app);
     color: var(--text-primary);
@@ -27,7 +32,6 @@
   }
 }
 
-/* Utilitário para esconder scrollbar na sidebar */
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }

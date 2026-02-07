@@ -13,28 +13,36 @@ const EditorCanvas = () => {
   useEffect(() => {
     if (selectedId && trRef.current) {
       const stage = stageRef.current;
-      const node = stage.findOne('#' + selectedId);
-      if (node) {
-        trRef.current.nodes([node]);
-        trRef.current.getLayer().batchDraw();
+      if(selectedId === 'overlay') {
+          const overlayNode = stage.findOne('.overlayObj');
+          if (overlayNode) {
+              trRef.current.nodes([overlayNode]);
+              trRef.current.getLayer().batchDraw();
+          }
+      } else {
+          const node = stage.findOne('#' + selectedId);
+          if (node) {
+            trRef.current.nodes([node]);
+            trRef.current.getLayer().batchDraw();
+          }
       }
     } else if (trRef.current) {
       trRef.current.nodes([]);
     }
-  }, [selectedId, texts]);
+  }, [selectedId, texts, overlayObj]);
 
   return (
-    // Container Principal: Força o tema escuro corretamente
-    <div className="flex flex-col flex-1 h-full w-full overflow-hidden relative bg-gray-100 dark:bg-[#0F172A] transition-colors duration-300">
+    // CORREÇÃO: bg-slate-50 (Cinza muito claro) para Light Mode, Azul escuro para Dark
+    <div className="flex flex-col flex-1 h-full w-full overflow-hidden relative bg-slate-50 dark:bg-[#0F172A] transition-colors duration-200">
       
-      {/* TOOLBAR */}
-      <div className="h-14 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1E293B] flex items-center justify-center gap-4 px-4 shadow-sm z-30 transition-colors">
-        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Proporção:</span>
+      {/* TOOLBAR: bg-white forçado */}
+      <div className="h-14 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] flex items-center justify-center gap-4 px-4 shadow-sm z-30 transition-colors">
+        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Proporção:</span>
         {['1:1', '4:5', '9:16'].map(ratio => (
           <button 
             key={ratio}
             onClick={() => setAspectRatio(ratio)}
-            className={`px-4 py-1 text-xs font-bold rounded-full transition-all ${aspectRatio === ratio ? 'bg-primary text-white shadow-md' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200'}`}
+            className={`px-4 py-1 text-xs font-bold rounded-full transition-all ${aspectRatio === ratio ? 'bg-primary text-white shadow-md' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-700 dark:text-gray-400'}`}
           >
             {ratio}
           </button>
@@ -43,22 +51,21 @@ const EditorCanvas = () => {
 
       {/* ÁREA DO CANVAS */}
       <div 
-        className="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing bg-gray-100 dark:bg-[#0F172A]"
+        className="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing bg-slate-50 dark:bg-[#0F172A]"
         style={{
-            backgroundImage: 'radial-gradient(var(--dot-color, #CBD5E1) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(var(--dot-color) 1px, transparent 1px)',
             backgroundSize: '24px 24px',
-            '--dot-color': 'rgba(148, 163, 184, 0.4)' // Truque para cor das bolinhas
+            '--dot-color': 'rgba(0, 0, 0, 0.1)' // Bolinhas cinzas suaves
         }}
       >
-        {/* Placeholder */}
         {!imageObj && (
             <div className="absolute inset-0 flex flex-col items-center justify-center z-50 pointer-events-none">
-                <div className="bg-white dark:bg-[#1E293B] p-10 rounded-3xl shadow-2xl border border-dashed border-gray-300 dark:border-gray-600 text-center pointer-events-auto max-w-sm w-full mx-4">
+                <div className="bg-white dark:bg-slate-800 p-10 rounded-3xl shadow-2xl border border-dashed border-gray-300 dark:border-slate-700 text-center pointer-events-auto max-w-sm w-full mx-4 transition-colors">
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
                         <Upload size={40} />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">Novo Projeto</h3>
-                    <p className="text-sm text-gray-500 mb-8">Comece carregando a imagem base</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Comece carregando a imagem base</p>
                     
                     <label className="flex items-center justify-center w-full bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-bold cursor-pointer transition-transform active:scale-95 shadow-lg shadow-primary/25 gap-2">
                         <Plus size={20} />
@@ -102,10 +109,12 @@ const EditorCanvas = () => {
 
             {overlayObj && (
               <KonvaImage 
+                name="overlayObj"
                 image={overlayObj} 
                 x={50} y={50} width={150} height={150} 
                 draggable 
                 onClick={(e) => { e.cancelBubble = true; setSelectedId('overlay'); }}
+                onTap={(e) => { e.cancelBubble = true; setSelectedId('overlay'); }}
               />
             )}
 
@@ -129,7 +138,7 @@ const EditorCanvas = () => {
           </Layer>
         </Stage>
 
-        <div className="absolute bottom-6 right-6 px-4 py-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-border rounded-full text-xs font-bold text-gray-600 dark:text-gray-300 shadow-lg pointer-events-none z-40">
+        <div className="absolute bottom-6 right-6 px-4 py-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-gray-200 dark:border-slate-700 rounded-full text-xs font-bold text-gray-600 dark:text-gray-300 shadow-lg pointer-events-none z-40 transition-colors">
            Zoom: {Math.round(scale * 100)}%
         </div>
       </div>

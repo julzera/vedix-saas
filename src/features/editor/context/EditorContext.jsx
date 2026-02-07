@@ -1,20 +1,20 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 
 const EditorContext = createContext();
 const API_BASE = "https://api.limonixdigital.com";
 
 export const EditorProvider = ({ children }) => {
+  // --- ESTADOS ---
   const [file, setFile] = useState(null);
   const [imageObj, setImageObj] = useState(null);
   const [overlayObj, setOverlayObj] = useState(null);
   
+  // Viewport (Inicia centralizado e não reseta ao trocar de aba)
   const [stageSize, setStageSize] = useState({ w: 800, h: 600 });
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [aspectRatio, setAspectRatio] = useState('1:1');
 
-  // INICIO VAZIO (Correção do pedido)
   const [texts, setTexts] = useState([]); 
   
   const [selectedId, setSelectedId] = useState(null);
@@ -25,40 +25,64 @@ export const EditorProvider = ({ children }) => {
   const stageRef = useRef(null);
   const trRef = useRef(null);
 
+  // --- PERSISTÊNCIA CRÍTICA ---
+  useEffect(() => {
+    // Só carrega a imagem se ela não existir no DOM mas o arquivo existir
+    if (file && !imageObj) {
+        const img = new window.Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => { 
+            setImageObj(img); 
+            // REMOVI O RESET DE POSIÇÃO AQUI. 
+            // Isso garante que ao voltar do dashboard, a posição seja a última salva.
+        };
+    }
+  }, [file, imageObj]);
+
+  // Atalho Delete
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT') return; // Permite deletar texto dentro de inputs
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
-        setTexts(prev => prev.filter(t => t.id !== selectedId));
-        setSelectedId(null);
+        if (selectedId === 'overlay') {
+            setOverlayObj(null);
+            setSelectedId(null);
+        } else {
+            setTexts(prev => prev.filter(t => t.id !== selectedId));
+            setSelectedId(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId]);
 
+  // --- AÇÕES ---
+
   const addElement = (elementConfig) => {
-    const stage = stageRef.current;
+    const offset = texts.length * 15; // Cascata para não sobrepor exato
     let startX = 100;
     let startY = 100;
-    
-    if (stage) {
-        // Centraliza na visão atual
-        startX = (-stage.x() + stage.width() / 2) / scale;
-        startY = (-stage.y() + stage.height() / 2) / scale;
+
+    // Tenta colocar no centro da visão atual
+    if (stageRef.current) {
+        const stage = stageRef.current;
+        // Pega o centro visível considerando o Pan (x,y) e Zoom (scale) atual
+        startX = (-stage.x() + (stage.width() / 2)) / scale;
+        startY = (-stage.y() + (stage.height() / 2)) / scale;
     }
 
     const newEl = {
       id: `el-${Date.now()}`,
-      x: startX,
-      y: startY,
+      x: startX + offset,
+      y: startY + offset,
       fontSize: 50,
       fontFamily: 'sans-serif',
       fill: '#000000',
-      fontStyle: 'normal', // Importante para evitar crash
+      fontStyle: 'normal',
       align: 'center',
       ...elementConfig 
     };
-
     setTexts(prev => [...prev, newEl]);
     setSelectedId(newEl.id);
   };
@@ -79,7 +103,7 @@ export const EditorProvider = ({ children }) => {
             await fontFace.load();
             document.fonts.add(fontFace);
             setAvailableFonts(prev => [...prev, fontName]);
-            if(selectedId) updateCurrentConfig('fontFamily', fontName);
+            if(selectedId && selectedId !== 'overlay') updateCurrentConfig('fontFamily', fontName);
         } catch (err) { console.error(err); }
     };
     reader.readAsArrayBuffer(file);
@@ -89,13 +113,37 @@ export const EditorProvider = ({ children }) => {
     if (!stageRef.current) return;
     setIsLoading(true);
     const oldSelection = selectedId;
-    setSelectedId(null);
+    setSelectedId(null); 
+
     setTimeout(() => {
-        const uri = stageRef.current.toDataURL({ pixelRatio: 2 });
-        setGeneratedImage(uri);
-        setSelectedId(oldSelection);
-        setIsLoading(false);
+        try {
+            const uri = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: "image/png" });
+            setGeneratedImage(uri);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSelectedId(oldSelection);
+            setIsLoading(false);
+        }
     }, 100);
+  };
+
+  const generateJSON = () => {
+    const data = {
+        baseImage: file ? file.name : null,
+        elements: texts.map(t => ({
+            type: 'text',
+            content: t.text,
+            x: Math.round(t.x),
+            y: Math.round(t.y),
+            fontSize: t.fontSize,
+            fontFamily: t.fontFamily,
+            color: t.fill,
+            style: t.fontStyle
+        })),
+        overlay: overlayObj ? { x: 50, y: 50 } : null
+    };
+    return JSON.stringify(data, null, 2);
   };
 
   const handleFileChange = (e) => {
@@ -104,7 +152,12 @@ export const EditorProvider = ({ children }) => {
       setFile(selectedFile);
       const img = new window.Image();
       img.src = URL.createObjectURL(selectedFile);
-      img.onload = () => { setImageObj(img); setPosition({x:0, y:0}); setScale(1); };
+      img.onload = () => { 
+          setImageObj(img); 
+          // AQUI SIM resetamos, pois é uma imagem nova
+          setPosition({x:0, y:0}); 
+          setScale(1); 
+      };
     }
   };
 
@@ -140,7 +193,8 @@ export const EditorProvider = ({ children }) => {
       file, setFile, imageObj, setImageObj, overlayObj, texts, setTexts,
       stageSize, setStageSize, scale, setScale, position, setPosition, aspectRatio, setAspectRatio,
       selectedId, setSelectedId, isLoading, setIsLoading, generatedImage, setGeneratedImage, availableFonts,
-      stageRef, trRef, addElement, updateCurrentConfig, handleWheel, handleFileChange, handleOverlayChange, handleFontUpload, handleGenerate, API_BASE
+      stageRef, trRef, addElement, updateCurrentConfig, handleWheel, handleFileChange, handleOverlayChange, 
+      handleFontUpload, handleGenerate, generateJSON, API_BASE
     }}>
       {children}
     </EditorContext.Provider>
